@@ -1,0 +1,175 @@
+import os
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn import metrics
+from sklearn.metrics import classification_report
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
+from sklearn import linear_model
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.decomposition import PCA
+
+file_name = "UCI_Credit_Card.csv"
+
+user_file_directory = "/Users/Looter/Downloads/uci"
+
+#Combines path and file names. Pratical to merge multiple parts of a path into one, instead of hard-coding every path name manually
+file_path = os.path.join(user_file_directory, file_name)
+
+#Reads the csv file 
+df = pd.read_csv(file_path)
+
+#Prints information about the DataFrame including the index dtype and columns, non-null values and memory usage
+df.info()
+
+#Checks if there is any duplicated value under the "ID" column
+boolean = df['ID'].duplicated().any()
+
+#Prints False, meaning that there is no duplicate
+print(boolean)
+
+#Prints the values of all duplicates. In this case it is 0
+df[df.duplicated(subset=["ID"], keep=False)]
+
+#Pandas' default number of max number of columns displayed is 20. This function is needed to display all columns given that our DataFrama has more than 20 columns
+pd.set_option('display.max_columns', 25)
+
+#Returns the first n rows. Useful for quickly testing if your object has the right type of data in it
+print(df.head(10))
+
+#Returns the number of missing values in the data set by column given by an anonymous function
+getNull = lambda givendf: print(givendf.isnull().sum())
+getNull(df)
+
+#Converts the numbers in scientific notation to standard notation. Easier to read
+np.set_printoptions(suppress=True)
+
+#Divide the DataFrame into input/output
+x = df.values[:,0:24]
+y = df.values[:, 24]
+
+#Separate DataFrame into 4 variables. X_train and Y_test are used to create the model. X_test and Y_test are used to check the accuracy of the model. 70% of the data goes to training while 30% goes to testing
+X_train, X_test, Y_train, Y_test = train_test_split(x, y, test_size = 0.3, random_state = 100)
+
+#Assigning linear regression model to variable 
+model = linear_model.LinearRegression()
+
+#Fits model
+model.fit(X_train,Y_train)
+
+#Score of model given parameters
+model.score(X_test,Y_test)
+
+#coefficients for the prediction of each of the targets
+model.coef_
+
+#Intercept of model
+(model.intercept_)
+
+#Predicts output given X_test
+Y_Pred_LM = model.predict(X_test)
+
+#Scatter plot of the output and predicted output
+plt.scatter(Y_test, Y_Pred_LM)
+
+#Histogram of the residual of the model. Inadequate model because of non-normality of residuals. The errors the model makes are not consistent across variables and observations. This can be seen by the performance metrics below
+plt.hist(Y_test - Y_Pred_LM)
+
+#Calculate mean absolute error
+metrics.mean_absolute_error(Y_test, Y_Pred_LM)
+
+#Calculate mean squared error
+metrics.mean_squared_error(Y_test, Y_Pred_LM)
+
+#Plots a bar chart representing the # of individuals who defaulted and not defaulted by sex
+sns.countplot(x='default.payment.next.month', hue='SEX', data=df)
+
+#Assigning logistic regression model to variable 
+model2 = linear_model.LogisticRegression()
+
+#Fits model
+model2.fit(X_train, Y_train)
+
+#Score of model given parameters
+model2.score(X_test, Y_test)
+
+#Predicts output given X_test
+Y_Pred_LM2 = model2.predict(X_test)
+
+#Calculates performance metrics for logistic models including precision, recall, f1 score, accuracy, macro and weighted average
+classification_report(Y_test, Y_Pred_LM2)
+
+#Assigning the decision tree to variable DT
+DT = DecisionTreeClassifier(criterion = "gini", random_state = 100)
+
+#Trains the X_train and Y_train datasets
+DT.fit(X_train, Y_train)
+
+#Uses X_test(input) to predict the output
+Y_Pred_DT = DT.predict(X_test)
+
+#Evaluates the fraction of predictions our model got right
+print(accuracy_score(Y_test, Y_Pred_DT))
+
+#More accurate than decision tree because random forest chooses features randomly during the training process and combines the output of multiple decision trees
+RF = RandomForestClassifier(n_estimators = 100, criterion = "gini", random_state = 100)
+
+#Train dataset
+RF.fit(X_train, Y_train)
+
+#Predicts output
+Y_Pred_RF = RF.predict(X_test)
+
+#Evaluates the fraction of predictions our model got right
+print(accuracy_score(Y_test, Y_Pred_RF))
+
+#Assigning KneighborsClassifier to KNN
+KNN = KNeighborsClassifier(n_neighbors = 95)
+
+#Training the model given the 2 parameters
+KNN.fit(X_train, Y_train)
+
+#Score of KNeighborsClassifier using n_neighbors as 95. 95 was chosen because the optimal K value is in the sqrt of N. N in this case is 30,000 x 0.3 = 9000 (number of rows in test sample)
+KNN.score(X_test, Y_test)
+
+#Evaluate the score of the model kNeighborsClassifier under uniform and distance weights between the ranges of the "optimal" K value
+k_value = 80
+for k in range(20):
+    k_value += + 1
+    KKN_Uni = KNeighborsClassifier(n_neighbors = k_value, weights = "uniform")
+    KKN_Uni.fit(X_train, Y_train)
+    Uni_Score = KKN_Uni.score(X_test, Y_test)
+    KKN_Wgtd = KNeighborsClassifier(n_neighbors = k_value, weights = "distance")
+    KKN_Wgtd.fit(X_train, Y_train)
+    Wgtd_Score = KKN_Wgtd.score(X_test, Y_test)
+    print("Uniform accuracy:" ,Uni_Score*100, " .Weight accuracy:" ,Wgtd_Score*100, "| K_value of", k_value)
+    
+#Assigning PCA model to PCA1. Aimed at lowering dimensional space.
+PCA1 = PCA(n_components = 5, random_state = 100)
+
+#Fitting argument
+PCA1.fit(X_train)
+
+#Show components
+PCA1.components_
+
+#Shows the percentage of variance that is attributed by each of the selected components
+PCA1.explained_variance_ratio_
+
+#Transforms the data to a new coordinate system such that the greatest variance by some scalar projection of the data comes to lie on the first coordinate, the second greatest variance on the second coordinate, and so on.
+X_train_ = PCA1.transform(X_train)
+X_test_ = PCA1.transform(X_test)
+
+#Converts np array into a dataframe
+X_train_DF = pd.DataFrame(data = X_train_)
+
+#Fit the new data into Random Forest
+RF.fit(X_train_, Y_train)
+
+#Predict output and accuracy
+Y_pred_test = RF.predict(X_test_)
+accuracy_score(Y_pred_test, Y_test)
